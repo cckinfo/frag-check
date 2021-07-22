@@ -1,11 +1,13 @@
-from bs4 import BeautifulSoup
-import requests
+import os
 import time
+import smtplib
+import requests
+from bs4 import BeautifulSoup
 
 # Program that checks new fragrances up for sale on parfumo against wish list.
 
 def findPerfumes():
-    """Finds perfumes on first page of URL and returns them in a list."""
+    """Finds perfumes+links on first page of URL and returns them in a list."""
     html_text = requests.get('https://www.parfumo.de/Souks/Offers/Perfumes').text
     soup = BeautifulSoup(html_text, 'lxml')
     perfumes = soup.find_all('div', class_='col')
@@ -29,7 +31,8 @@ def foundPerfumes():
 
 latest_perfumes = []
 corresponding_links = []
-wishlist = ['Layton', 'Herod', 'XerJoff', 'Vanilla']
+wishlist = ['Luna Rossa Black', 'Spicebomb Extreme', "L'Homme - Prada",
+'Allure Homme Sport Eau Extrême', 'Layton', 'Musc', 'Velours']
 
 # while True:
 # starttime = time.time()
@@ -38,8 +41,28 @@ soup = BeautifulSoup(html_text, 'lxml')
 perfumes = soup.find_all('div', class_='col')
 
 findPerfumes()
-# Creates a dictionary with the perfume name as key and the link as value.
 perfumes_and_links = dict(zip(latest_perfumes, corresponding_links))
-print(foundPerfumes())
-# time.sleep(1800.0 - ((time.time() - starttime) % 1800.0))
+found = foundPerfumes()
+frags_mail = ''
 
+
+EMAIL_ADDRESS = os.environ.get('SMTP_USER')
+PASSWORD = os.environ.get('SMTP_PWD')
+
+# Send an email if matches are found. Look for matches every 60 minutes.
+# if found:
+for frag in found:
+    frags_mail += f"{frag}\n{found[frag]}\n\n"
+
+with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+    smtp.ehlo()
+    smtp.starttls()
+    smtp.ehlo()
+    smtp.login(EMAIL_ADDRESS, PASSWORD)
+    
+    subject = 'New Fragrance Alert!'
+    body = frags_mail
+    msg = f'Subject: {subject}\n\n{body}'
+    smtp.sendmail(EMAIL_ADDRESS, EMAIL_ADDRESS, msg)
+        
+# time.sleep(3600.0 - ((time.time() - starttime) % 3600.0))
