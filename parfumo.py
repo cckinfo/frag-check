@@ -32,37 +32,36 @@ def foundPerfumes():
 latest_perfumes = []
 corresponding_links = []
 wishlist = ['Luna Rossa Black', 'Spicebomb Extreme', "L'Homme - Prada",
-'Allure Homme Sport Eau Extrême', 'Layton', 'Musc', 'Velours']
+'Allure Homme Sport Eau Extrême', 'Bleecker']
 
-# while True:
-# starttime = time.time()
-html_text = requests.get('https://www.parfumo.de/Souks/Offers/Perfumes').text
-soup = BeautifulSoup(html_text, 'lxml')
-perfumes = soup.find_all('div', class_='col')
+while True:
+    starttime = time.time()
+    html_text = requests.get('https://www.parfumo.de/Souks/Offers/Perfumes').text
+    soup = BeautifulSoup(html_text, 'lxml')
+    perfumes = soup.find_all('div', class_='col')
 
-findPerfumes()
-perfumes_and_links = dict(zip(latest_perfumes, corresponding_links))
-found = foundPerfumes()
-frags_mail = ''
+    findPerfumes()
+    perfumes_and_links = dict(zip(latest_perfumes, corresponding_links))
+    found = foundPerfumes()
+    frags_mail = ''
 
+    EMAIL_ADDRESS = os.environ.get('SMTP_USER')
+    PASSWORD = os.environ.get('SMTP_PWD')
 
-EMAIL_ADDRESS = os.environ.get('SMTP_USER')
-PASSWORD = os.environ.get('SMTP_PWD')
+    # Send an email if matches are found. Look for matches every 60 minutes.
+    if found:
+        for frag in found:
+            frags_mail += f"{frag}\n{found[frag]}\n\n"
 
-# Send an email if matches are found. Look for matches every 60 minutes.
-# if found:
-for frag in found:
-    frags_mail += f"{frag}\n{found[frag]}\n\n"
-
-with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
-    smtp.ehlo()
-    smtp.starttls()
-    smtp.ehlo()
-    smtp.login(EMAIL_ADDRESS, PASSWORD)
-    
-    subject = 'New Fragrance Alert!'
-    body = frags_mail
-    msg = f'Subject: {subject}\n\n{body}'
-    smtp.sendmail(EMAIL_ADDRESS, EMAIL_ADDRESS, msg)
-        
-# time.sleep(3600.0 - ((time.time() - starttime) % 3600.0))
+        with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(EMAIL_ADDRESS, PASSWORD)
+            
+            subject = 'New Fragrance Alert!'
+            body = frags_mail
+            msg = f'Subject: {subject}\n\n{body}'
+            smtp.sendmail(EMAIL_ADDRESS, EMAIL_ADDRESS, msg.encode("utf8"))
+            
+    time.sleep(3600.0 - ((time.time() - starttime) % 3600.0))
