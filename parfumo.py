@@ -7,51 +7,57 @@ from bs4 import BeautifulSoup
 # Program that checks new fragrances up for sale on parfumo against wish list.
 
 def findPerfumes():
-    """Finds perfumes+links on first page of URL and returns them in a list."""
+    """Finds perfumes+linkid+links on first page of URL and returns them in a list."""
     html_text = requests.get('https://www.parfumo.de/Souks/Offers/Perfumes').text
     soup = BeautifulSoup(html_text, 'lxml')
     perfumes = soup.find_all('div', class_='col')
-
     for perfume in perfumes:
+        temp_list = []
         perfume_name = perfume.find('div', class_='name').text
-        latest_perfumes.append(perfume_name)
-        corresponding_links.append(perfume.a['href'])
-    return latest_perfumes, corresponding_links
+        temp_list.append(perfume_name)
+        temp_list.append(perfume.a['href'][-7:])
+        temp_list.append(perfume.a['href'])
+        perfume_id_link.append(temp_list)
+    return perfume_id_link
 
-def matches(latest, wish):
-    """Checks if perfume appears in wishlist and returns a boolean value."""
-    return wish in latest
+def item_occurs(item, wish):
+    """Used as a boolean check in another function to see if the item
+    is inside the wish list."""
+    for s in wish:
+        if s in item:
+            return True
+    return False
 
-def foundPerfumes():
-    """Checks if latest perfumes are in wish list and if returns them in dict
-    with the respective link as value."""
-    overlapping_perfume_and_link = {x: perfumes_and_links[x] 
-    for x in perfumes_and_links if any(matches(x, y) for y in wishlist)}
-    return overlapping_perfume_and_link
+def foundPerfumes(itemlist, wish, alreadyseen):
+    """Checks if the items on the front page are in wish list and if so
+    adds them to an archive with an unique ID. Then it returns all the matches
+    with their respective link."""
+    new = []
+    for item, i, link in itemlist:
+        if item_occurs(item, wish) and (item, i) not in alreadyseen:
+            alreadyseen.append((item, i))
+            new.append((item, link))
+    return new
 
-latest_perfumes = []
-corresponding_links = []
-wishlist = ['Luna Rossa Black', 'Spicebomb Extreme', "L'Homme - Prada",
-'Allure Homme Sport Eau Extrême', 'Bleecker']
+archive = []
 
 while True:
+    perfume_id_link = []
+    wishlist = ['Luna Rossa Black', 'Spicebomb Extreme', "L'Homme - Prada",
+    'Kyoto', 'Avignon', 'Hinoki', 'Layton', 'Herod', 'Naxos', 'Reflection Man']
     starttime = time.time()
-    html_text = requests.get('https://www.parfumo.de/Souks/Offers/Perfumes').text
-    soup = BeautifulSoup(html_text, 'lxml')
-    perfumes = soup.find_all('div', class_='col')
 
     findPerfumes()
-    perfumes_and_links = dict(zip(latest_perfumes, corresponding_links))
-    found = foundPerfumes()
+    found = foundPerfumes(perfume_id_link, wishlist, archive)
     frags_mail = ''
 
     EMAIL_ADDRESS = os.environ.get('SMTP_USER')
     PASSWORD = os.environ.get('SMTP_PWD')
 
-    # Send an email if matches are found. Look for matches every 60 minutes.
+    # Send an email if matches are found. Look for matches every 10 minutes.
     if found:
         for frag in found:
-            frags_mail += f"{frag}\n{found[frag]}\n\n"
+            frags_mail += str(frag) + '\n'
 
         with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
             smtp.ehlo()
@@ -64,4 +70,4 @@ while True:
             msg = f'Subject: {subject}\n\n{body}'
             smtp.sendmail(EMAIL_ADDRESS, EMAIL_ADDRESS, msg.encode("utf8"))
             
-    time.sleep(3600.0 - ((time.time() - starttime) % 3600.0))
+    time.sleep(300.0 - ((time.time() - starttime) % 300.0))
